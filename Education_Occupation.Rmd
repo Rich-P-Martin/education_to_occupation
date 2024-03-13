@@ -1,0 +1,86 @@
+---
+title: "Untitled"
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+runtime: shiny
+resource_files:
+- out/by_edu.csv
+- out/by_noc.csv
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(vroom)
+library(here)
+
+by_noc <- vroom(here("out","by_noc.csv"))
+by_edu <- vroom(here("out","by_edu.csv"))
+all_nocs <- unique(by_noc$NOC)
+all_edu <- unique(by_edu$Education)
+```
+
+Inputs {.sidebar}
+-------------------------------------
+
+```{r}
+selectInput(
+  "noc",
+  "Choose an Occupation (for left panel)",
+  all_nocs,
+  selected = all_nocs[194],
+)
+selectInput(
+  "edu",
+  "Choose an Education (for right panel)",
+  all_edu,
+  selected = all_edu[498],
+)
+
+reactive_noc <- reactive({
+  by_noc|>
+    filter(NOC==input$noc)
+})
+reactive_edu <- reactive({
+  by_edu|>
+    filter(Education==input$edu)
+})
+
+```
+ 
+Row
+-------------------------------------
+    
+### Top Education origins for `r renderUI({input$noc})`
+    
+```{r, fig.retina=2}
+#renderDataTable(reactive_noc())
+renderPlot({
+  reactive_noc()|>
+    ggplot(aes(prop, fct_reorder(CIP, prop), fill=factor(`Highest Attained`)))+
+    geom_col(alpha=.5, position = "dodge")+
+    scale_x_continuous(labels = scales::percent)+
+    labs(x=NULL,y=NULL, fill=NULL)+
+    theme_minimal()+
+    theme(text=element_text(size=16), legend.position="bottom")+ 
+    guides(fill = guide_legend(nrow = 8))  
+})
+```
+    
+###  Top Occupation destinations for `r renderUI({input$edu})`
+
+```{r}
+renderPlot({
+ reactive_edu()|>
+   ggplot(aes(prop, fct_reorder(NOC, prop)))+
+    geom_col(alpha=.5)+
+    scale_x_continuous(labels = scales::percent)+
+    labs(x=NULL,y=NULL)+
+    theme_minimal()+
+    theme(text=element_text(size=16))
+})
+```
+
+
